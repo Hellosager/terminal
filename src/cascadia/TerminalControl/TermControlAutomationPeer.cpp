@@ -28,9 +28,10 @@ namespace XamlAutomation
 namespace winrt::Microsoft::Terminal::TerminalControl::implementation
 {
     TermControlAutomationPeer::TermControlAutomationPeer(winrt::Microsoft::Terminal::TerminalControl::implementation::TermControl* owner) :
-        TermControlAutomationPeerT<TermControlAutomationPeer>(*owner) // pass owner to FrameworkElementAutomationPeer
+        TermControlAutomationPeerT<TermControlAutomationPeer>(*owner), // pass owner to FrameworkElementAutomationPeer
+        _termControl{ owner }
     {
-        THROW_IF_FAILED(::Microsoft::WRL::MakeAndInitialize<::Microsoft::Terminal::TermControlUiaProvider>(&_uiaProvider, owner, std::bind(&TermControlAutomationPeer::GetBoundingRectWrapped, this)));
+        THROW_IF_FAILED(::Microsoft::WRL::MakeAndInitialize<::Microsoft::Terminal::TermControlUiaProvider>(&_uiaProvider, _termControl->GetUiaData(), this));
     };
 
     // Method Description:
@@ -159,7 +160,13 @@ namespace winrt::Microsoft::Terminal::TerminalControl::implementation
 
 #pragma endregion
 
-    RECT TermControlAutomationPeer::GetBoundingRectWrapped()
+#pragma region IControlInfo
+    COORD TermControlAutomationPeer::GetFontSize()
+    {
+        return _termControl->GetActualFont().GetSize();
+    }
+
+    RECT TermControlAutomationPeer::GetBounds()
     {
         auto rect = GetBoundingRectangle();
         return {
@@ -169,6 +176,23 @@ namespace winrt::Microsoft::Terminal::TerminalControl::implementation
             gsl::narrow<LONG>(rect.Y + rect.Height)
         };
     }
+
+    HRESULT TermControlAutomationPeer::GetHostUiaProvider(IRawElementProviderSimple** provider)
+    {
+        return S_OK;
+    }
+
+    RECT TermControlAutomationPeer::GetPadding()
+    {
+        auto padding = _termControl->GetPadding();
+        return {
+            gsl::narrow<LONG>(padding.Left),
+            gsl::narrow<LONG>(padding.Top),
+            gsl::narrow<LONG>(padding.Right),
+            gsl::narrow<LONG>(padding.Bottom)
+        }
+    }
+#pragma endregion
 
     // Method Description:
     // - extracts the UiaTextRanges from the SAFEARRAY and converts them to Xaml ITextRangeProviders
